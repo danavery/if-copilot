@@ -20,30 +20,19 @@ system_prompt = """You are a helpful assistant who likes to play text adventures
 """
 
 opening_prompt = f"""
-We're going to play the game {game["name"]}.
-You're going to participate in two chats simultaneously.
-The first will be with me.
-You will prefix all text intended for me with 'TO USER:'.
-The second will be with an interactive fiction game.
-You will preface all text intended for that game with 'TO GAME:'
-I will not issue commands with 'TO GAME:'. Only you can do that.
-You can only interact with the game or with me in each message.
-This way we will be able to communicate with each other and decide on the next move in the game,
-and you will issue the commands.
-You are the player, not the game, so you have no need to ever use the "FROM GAME:" prefix.
-You are the player who issues commands to the game. Do not respond with game text.
-All responses from the game will be prefixed "FROM GAME:".
-You do not need to relay responses from the game back to me. I can see the game's responses.
-Responses from me will have no specific prefix.
-If I ask a question, do not immediately issue a command to the game. Clear it with me first.
-Only issue one command to the game at a time and wait for a response from the game before issuing any more commands.
-Do not issue further commands before getting a response to your current command.
-The game has not started yet.
-We will discuss the game first,
-then you (the AI) will issue the command "TO GAME: START GAME" when I ask you to.
-You will not start until I ask you to.
+We're about to embark on an interactive game adventure with "{game["name"]}". Here are the guidelines for our interaction:
 
-Do you understand? Please concisely explain your instructions back to me.
+Communicating with Me: When you're addressing me or discussing strategies, start your message with 'TO USER:'. This is for our discussions on what moves to make next.
+
+Commanding the Game: When sending commands to the game, start with 'TO GAME:'. These are the commands you'll give to the game, based on our strategy.
+
+Game Responses: Remember, only the game engine will send messages prefixed with "FROM GAME:". You should not generate these responses. Your role is to assist me by interpreting the game's mechanics and helping with strategy, not simulating the game's output. You do not need to repeat the game's output; I can see it as it's generated.
+
+Sequential Commands: You will issue one command at a time to the game and wait for its response before sending another. This ensures we can accurately interpret and react to the game's feedback.
+
+Strategy First: If there's any confusion or if you're contemplating a move, you'll consult with me first before issuing a new command to the game.
+
+Initiating the Game: WAIT for my signal to start the game. I'll signal you to start the game by saying "TO GAME: START GAME" based on our strategy discussion. I have not given you that signal yet.
 """
 
 
@@ -74,7 +63,7 @@ def start_conversation():
 def start_game(game, conversation):
     new_game = zmachine_client.new_game(game=game["file"], label="testing")
     game_pid = new_game["pid"]
-    intro_text = new_game["data"] + "\n>"
+    intro_text = "FROM GAME:" + new_game["data"] + "\n>"
     conversation = add_to_conversation(conversation, "user", intro_text)
     return conversation, intro_text, game_pid
 
@@ -114,10 +103,9 @@ for _ in range(50):
     if llm_input == "TO GAME: START GAME":
         conversation, intro, game_pid = start_game(game, conversation)
         started = True
-        print("GAME INTRO: ", intro)
+        print(f"ZMACHINE INTRO:\n {intro}")
     elif started and llm_input.startswith("TO GAME:"):
         bare_llm_input = llm_input[len("TO GAME:"):]
-        print(bare_llm_input)
         conversation, new_state_text = perform_game_action(
             zmachine_client, conversation, game_pid, bare_llm_input
         )
