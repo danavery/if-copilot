@@ -35,6 +35,12 @@ Ready?
 """
 
 
+def add_to_conversation(conversation, role, content):
+    new_message = {"role": role, "content": content}
+    conversation.append(new_message)
+    return conversation
+
+
 def start_conversation():
     conversation = [
         {
@@ -49,8 +55,7 @@ def start_conversation():
 
     response = llm_client.chat.completions.create(model=model, messages=conversation)
     opening_response = response.choices[0].message.content
-    new_message = {"role": "assistant", "content": opening_response}
-    conversation.append(new_message)
+    conversation = add_to_conversation(conversation, "assistant", opening_response)
     return opening_response, conversation
 
 
@@ -58,8 +63,7 @@ def start_game(game, conversation):
     new_game = zmachine_client.new_game(game=game["file"], label="testing")
     game_pid = new_game["pid"]
     intro_text = new_game["data"] + "\n>"
-    new_message = {"role": "user", "content": intro_text}
-    conversation.append(new_message)
+    conversation = add_to_conversation(conversation, "user", intro_text)
     return game_pid, intro_text, conversation
 
 
@@ -68,18 +72,14 @@ def get_next_command(llm_client, model, conversation):
         model=model, messages=conversation
     )
     command = llm_response.choices[0].message.content
-
-    new_message = {"role": "assistant", "content": command}
-    conversation.append(new_message)
+    conversation = add_to_conversation(conversation, "assistant", command)
     return command, conversation
 
 
 def perform_game_action(zmachine_client, conversation, game_pid, command):
     new_state = zmachine_client.action(game_pid=game_pid, command=command)
-    new_state_text = new_state["data"] + "\n> "
-
-    new_message = {"role": "user", "content": new_state_text}
-    conversation.append(new_message)
+    new_state_text = new_state["data"] + "> "
+    conversation = add_to_conversation(conversation, "user", new_state_text)
     return new_state_text, conversation
 
 
