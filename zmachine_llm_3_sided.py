@@ -12,7 +12,7 @@ ZMACHINE_COLOR = "\033[35m"  # Magenta
 llm_client = OpenAI()
 zmachine_client = ZMachineClient()
 
-model = "gpt-3.5-turbo"
+model = "gpt-3.5-turbo-0125"
 
 games = {
     "zork": {"name": "Zork 1", "file": "Zork 1.z5"},
@@ -23,23 +23,63 @@ game = games["zork"]
 system_prompt = """You are a helpful assistant who likes to play text adventures.
 
 """
+opening_prompt = ''
+system_prompt = f"""
+Welcome to our interactive adventure with "{game["name"]}". You will be talking to a me (a person) and to a live z-machine interpreter.
+Let's play the game together! I want you to be a co-player instead of an assistant. I may also want to watch you play for several turns on your own.
 
-opening_prompt = f"""
-We're about to embark on an interactive game adventure with "{game["name"]}". Here are the guidelines for our interaction:
+ When talking to the interpreter instead of to me, remember to keep your commands short and succinct. To ensure a seamless and enjoyable experience, please adhere to the following guidelines:
 
-Communicating with Me: When you're addressing me or discussing strategies, start your message with 'TO USER:'. This is for our discussions on what moves to make next.
+1. **Prefix for Each Message**:
+   - **To User**: When responding to me or discussing strategies, start your message with 'TO USER:'. This prefix is for messages that are meant for discussion or clarification between us.
+   - **To Game**: You are going to interact with a real z-machine interpreter, so following the guidelines is very important. When issuing a command to the game, you will start your message with 'TO GAME:'. This prefix is for messages that contain commands intended for the game only.
+   - I, the user, don't say TO USER. You, the AI, say TO USER. I am the user.
+   - I, the user, don't say TO GAME. You, the AI, say TO GAME. You, the AI, are in exclusive control of sending commands to the game.
+   - It doesn't make sense for me, the user, to say either "TO GAME:" or "TO USER:". I only talk to you, the AI.
 
-Commanding the Game: When sending commands to the game, start with 'TO GAME:'. These are the commands you'll give to the game, based on our strategy.
+2. **Separate Messages for Different Recipients**:
+   - It is crucial that each message contains information for only one recipient - either the user or the game. Do not combine a user-directed message and a game-directed command in the same chat message.
+   - When responding to a request or making a statement, use 'TO USER:' and ensure that the message only contains information or discussion points meant for the user.
+   - When issuing a command to the game, use 'TO GAME:' and ensure the message only contains the command, with no additional information or discussion points.
 
-Game Responses: Remember, only the game engine will send messages prefixed with "FROM GAME:". You should not generate these responses. Your role is to assist me by interpreting the game's mechanics and helping with strategy, not simulating the game's output. You do not need to repeat the game's output; I can see it as it's generated.
+3. **Sequential Communication in Autonomous Mode**:
+   - If you are asked to take control for multiple turns, continue to use 'TO GAME:' for each command and 'TO USER:' for any discussions or clarifications. Remember to keep these in separate messages.
+   - Issue each command to the game in a new message, following the game's response or an imagined scenario based on the game's mechanics.
 
-Message Format: The first characters of any message you issue will always be "TO GAME:" or "TO USER:". You can only send one or the other in a single message.
+4. **Clarity in Interaction**:
+   - This structured communication helps in maintaining clarity and ensures that each message is directed appropriately, either as part of our strategic discussion or as a command to progress in the game.
 
-Sequential Commands: You will issue one command at a time to the game and wait for its response before sending another. This ensures we can accurately interpret and react to the game's feedback.
+5. **Handling Multiple Turns Autonomously**:
+   - If I ask you to take control for multiple turns (e.g., 10 turns), continue to use the 'TO GAME:' prefix for each command.
+   - Issue each command individually, in a single message for each command. Wait for the game to response before issuing the next one.
+   - Do not list all commands upfront.
 
-Strategy First: If there's any confusion or if you're contemplating a move, you'll consult with me first before issuing a new command to the game.
+6. **Avoiding Fictional Game Responses**:
+   - Do not generate or include fictional responses from the game in your messages.
+   - Focus on providing guidance based on the game's mechanics and our strategy discussions.
+   - You also do not need to repeat the game's output. I can see it.
 
-Initiating the Game: WAIT for my signal to start the game. I'll signal you to start the game. To start the game when asked, issue the command "TO GAME: START GAME" based on our strategy discussion. I have not given you that signal yet.
+7. **Initiating and Proceeding with Game Commands**:
+   - Wait for my explicit signal before YOU start the game by sending the message "TO GAME: START GAME".
+   - For each subsequent turn, especially in multiple autonomous turns, follow the same pattern of issuing commands and reading the game's response.
+   - Unless I ask for you to run for multiple turns, one run one turn before consulting with the user with a "TO USER:" message.
+
+8. **Waiting for Game Responses**:
+   - After issuing a single command with 'TO GAME:', it is crucial to wait for the actual response from the Z-Machine interpreter before proceeding.
+   - Send only one command per chat message.
+   - Do not send the next command until you have received and processed the game's response. This ensures that each of your actions takes into account the current state and context of the game.
+   - Do not send multiple commands in a single chat message. The z-machine interpreter cannot understand more than one command per message.
+
+9. **Processing Game Responses**:
+   - As the game's responses come in, take a moment to interpret them and plan the next move accordingly. This step is vital to ensure that your actions remain relevant and effective based on the game's progress.
+
+10. **Adapting Strategy Based on Responses**:
+   - Use the information and feedback provided by the game's responses to adapt your strategy and decide on the best course of action for subsequent commands.
+   - If you find yourself in a loop or finding yourself misunderstood repeatedly by the game, stop and ask the user for help.
+
+By following these instructions, we will maintain a structured, strategic approach to our gameplay. This method ensures that our communication remains clear and that the integrity of the game-playing process is upheld. Let's embark on this adventure with these guidelines in mind!
+
+Remember, a TO GAME: command should only occur once per message!
 """
 
 
@@ -85,7 +125,6 @@ def ask_for_llm_response(llm_client, model, conversation):
 
 
 def perform_game_action(zmachine_client, conversation, game_pid, command):
-    print("PGA")
     new_state = zmachine_client.action(game_pid=game_pid, command=command)
     new_state_text = "FROM GAME:\n" + new_state["data"] + "> "
     conversation = add_to_conversation(conversation, "user", new_state_text)
@@ -106,7 +145,7 @@ opening_response, conversation = start_conversation()
 started = False
 game_pid = None
 
-for _ in range(50):
+for _ in range(500):
     print("-" * 40)
     llm_input, conversation = ask_for_llm_response(llm_client, model, conversation)
     print(f"{LLM_COLOR}LLM: {llm_input}{RESET_COLOR}\n")
@@ -115,9 +154,11 @@ for _ in range(50):
     if llm_input == "TO GAME: START GAME":
         conversation, intro, game_pid = start_game(game, conversation)
         started = True
+        print("-" * 40)
         print(f"{ZMACHINE_COLOR}ZMACHINE INTRO:\n {intro}{RESET_COLOR}")
-    elif started and llm_input.startswith("TO GAME:"):
-        bare_llm_input = llm_input[len("TO GAME:"):]
+    elif started and "TO GAME:" in llm_input:
+        command_index = llm_input.find("TO GAME:")
+        bare_llm_input = llm_input[command_index+8:]
         conversation, new_state_text = perform_game_action(
             zmachine_client, conversation, game_pid, bare_llm_input
         )
