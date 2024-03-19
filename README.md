@@ -4,7 +4,7 @@ Play interactive fiction with an LLM friend
 ---
 Living Room
 
-You are sitting at a desk in a living room. A calendar on the wall says "July 1983."
+You are sitting at a desk in a living room. A calendar on the wall says "July 1984."
 
 There is a Compaq Portable computer here. The computer is turned on and seems to be waiting for instructions.
 
