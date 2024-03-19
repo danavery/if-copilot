@@ -1,5 +1,6 @@
 # IF-Copilot
-Play interactive fiction with an LLM friend
+
+Play interactive fiction with an LLM friend.
 
 ---
 Living Room
