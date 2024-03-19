@@ -42,7 +42,7 @@ If you have an Infocom z5 file, you can use that. If you want to play something 
 You'll also need an OpenAI API key.
 
 For the full assistant experience, run `python zmachine_llm_3_sided.py`. At the moment it has a maximum 500-turn limit, just to prevent OpenAI billing accidents.
+
 To just have the LLM play the game alone, run `python zmachine_llm.py`. By default it will only play 5 turns, so you'll want to bump that range(5) call if you want to run it longer.
 
-
-
+This is a proof-of-concept, and as such is not a finished product. But it is fun to play with!
